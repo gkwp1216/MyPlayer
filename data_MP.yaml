@@ -1,0 +1,19 @@
+# YOLO 학습 데이터셋 설정 파일 (MP)
+# MP 게임 전용 데이터 구성
+
+# 데이터셋 루트
+path: ./datasets/MP
+train: images/train
+val: images/val
+test: images/test
+
+# 클래스 정의 (필요에 맞게 수정)
+names:
+  0: skill_cooldown
+  1: buff_time_low
+  2: exp_doping_active
+  3: exp_doping_missing
+  4: skill_ready
+
+# 클래스 개수 (names 길이와 일치)
+nc: 5

@@ -1,0 +1,21 @@
+# ML 게임 전용 설정 오버레이
+# 필요 시 값 조정 (예: 다른 키, 다른 타이머)
+
+timers:
+  buff_base: 1500  # 다른 게임에서는 25분 주기라 가정
+  buff_variance: 90
+  skill_base: 45   # 설치기 주기가 더 짧다고 가정
+  skill_variance: 5
+
+keybindings:
+  buff_key: '-'    # ML 게임에서 버프 키
+  skill_key: 'F2'  # ML 게임에서 설치기 키
+
+yolo:
+  model_path: 'models/ml_best.pt'
+  confidence_threshold: 0.55
+  use_gpu: true
+
+screen:
+  monitor: 1
+  capture_fps: 12

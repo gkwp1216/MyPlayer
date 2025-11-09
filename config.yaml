@@ -1,0 +1,111 @@
+# 프로젝트 설정 파일
+
+# 타이머 설정 (초 단위)
+timers:
+  buff_base: 1800  # 30분 버프 기본 주기
+  buff_variance: 120  # 버프 주기 무작위 범위 (±2분)
+  
+# 스킬 설정 - 각 스킬의 쿨타임과 키 설정
+skills:
+  # 설치기 스킬들 (약 1분 쿨타임)
+  placement_skills:
+    - name: "설치기1"
+      key: 'F1'
+      cooldown_base: 60  # 기본 쿨타임 (초)
+      cooldown_variance: 5  # 무작위 범위 (±5초)
+      enabled: true
+      use_mouse: true  # 마우스 클릭 필요 여부
+      
+    - name: "설치기2"
+      key: 'F2'
+      cooldown_base: 60
+      cooldown_variance: 5
+      enabled: true
+      use_mouse: true
+  
+  # 주기적 버프 스킬들
+  buff_skills:
+    - name: "30분경험치버프"
+      key: '='
+      cooldown_base: 1800  # 30분
+      cooldown_variance: 120  # ±2분
+      enabled: true
+      use_mouse: false
+      
+    - name: "메이플여신의축복"
+      key: 'F12'
+      cooldown_base: 900  # 15분
+      cooldown_variance: 60  # ±1분
+      enabled: true
+      use_mouse: false
+    
+    - name: "유니온의힘"
+      key: 'F11'
+      cooldown_base: 7200  # 2시간
+      cooldown_variance: 300  # ±5분
+      enabled: true
+      use_mouse: false
+  
+  # 짧은 쿨타임 공격 스킬들
+  attack_skills:
+    - name: "보조공격1"
+      key: 'q'
+      cooldown_base: 10  # 10초
+      cooldown_variance: 2  # ±2초
+      enabled: true
+      use_mouse: false
+      
+    - name: "보조공격2"
+      key: 'w'
+      cooldown_base: 15
+      cooldown_variance: 3
+      enabled: true
+      use_mouse: false
+      
+    - name: "보조공격3"
+      key: 'e'
+      cooldown_base: 20
+      cooldown_variance: 4
+      enabled: true
+      use_mouse: false
+  
+  # 긴급 스킬 (체력 회복 등)
+  emergency_skills:
+    - name: "포션1"
+      key: 'insert'
+      cooldown_base: 5
+      cooldown_variance: 1
+      enabled: true
+      use_mouse: false
+      trigger_condition: "health_low"  # 체력 낮을 때
+      
+    - name: "포션2"
+      key: 'delete'
+      cooldown_base: 5
+      cooldown_variance: 1
+      enabled: true
+      use_mouse: false
+      trigger_condition: "mana_low"  # 마나 낮을 때
+
+# YOLO 모델 설정
+yolo:
+  model_path: 'models/best.pt'  # 커스텀 학습된 모델 경로
+  confidence_threshold: 0.5  # 탐지 신뢰도 임계값
+  use_gpu: true  # GPU 사용 여부
+
+# 화면 캡처 설정
+screen:
+  monitor: 1  # 모니터 번호 (1부터 시작)
+  capture_fps: 10  # 초당 캡처 프레임 수
+
+# 행동 설정
+action:
+  mouse_move_duration_min: 0.1  # 마우스 이동 최소 시간 (초)
+  mouse_move_duration_max: 0.3  # 마우스 이동 최대 시간 (초)
+  skill_cast_delay_min: 0.1  # 스킬 시전 딜레이 최소 (초)
+  skill_cast_delay_max: 0.2  # 스킬 시전 딜레이 최대 (초)
+
+# 로깅 설정
+logging:
+  level: 'INFO'  # DEBUG, INFO, WARNING, ERROR
+  file: 'logs/perceptive_ai.log'

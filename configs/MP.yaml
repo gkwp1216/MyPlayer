@@ -1,0 +1,20 @@
+# MP 게임 전용 설정 오버레이
+
+timers:
+  buff_base: 1800
+  buff_variance: 120
+  skill_base: 60
+  skill_variance: 5
+
+keybindings:
+  buff_key: '='
+  skill_key: 'F1'
+
+yolo:
+  model_path: 'models/mp_best.pt'
+  confidence_threshold: 0.5
+  use_gpu: true
+
+screen:
+  monitor: 1
+  capture_fps: 10
