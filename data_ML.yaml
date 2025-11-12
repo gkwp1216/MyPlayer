@@ -1,5 +1,5 @@
-# YOLO 학습 데이터셋 설정 파일 (ML)
-# ML 게임 전용 데이터 구성
+9ㅗㅛㅎㅎㅎㅎㅎ# YOLO 학습 데이터셋 설정 파일 (ML)
+# ML 게임 전용 - 게임 내 객체 탐지 (몬스터, 버프, 맵 객체 등)
 
 # 데이터셋 루트
 path: ./datasets/ML
@@ -7,13 +7,11 @@ train: images/train
 val: images/val
 test: images/test
 
-# 클래스 정의 (필요에 맞게 수정)
+# 클래스 정의 (실제 수집된 객체 기준)
 names:
-  0: skill_cooldown
-  1: buff_time_low
-  2: exp_doping_active
-  3: exp_doping_missing
-  4: skill_ready
+  0: monster              # 몬스터 (슬라임, 버섯 등 포함)
+  1: npc                  # NPC (상점, 컨트롤러 등)
+  2: portal               # 포탈
 
 # 클래스 개수 (names 길이와 일치)
-nc: 5
+nc: 3

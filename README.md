@@ -239,6 +239,32 @@ MyPlayer/
 py main.py
 ```
 
+### 멀티 게임(MP/ML) 간단 사용법
+두 게임의 데이터/설정/로그를 분리해서 운영할 수 있습니다. 자세한 워크플로우는 `SETUP.md`에 정리되어 있습니다.
+
+```powershell
+# 실행 (게임별 설정 적용)
+py main.py --game MP
+py main.py --game ML
+
+# 데이터 분할 (게임별)
+py tools/dataset_splitter.py --game MP
+py tools/dataset_splitter.py --game ML --train 0.85 --val 0.1 --test 0.05
+
+# YOLO 학습 (헬퍼 스크립트)
+py tools/train_yolo.py --game MP --model yolo11n.pt --epochs 50
+py tools/train_yolo.py --game ML --model yolo11s.pt --epochs 60
+
+# 직접 YOLO CLI 사용 시 (데이터 파일 분리)
+yolo detect train data=data_MP.yaml model=yolo11n.pt epochs=50
+yolo detect train data=data_ML.yaml model=yolo11s.pt epochs=60
+```
+
+참고:
+- 게임별 로그 파일: `logs/perceptive_ai_MP.log`, `logs/perceptive_ai_ML.log`
+- 게임별 모델 저장: `models/mp_best.pt`, `models/ml_best.pt` (train_yolo.py가 자동 복사)
+- 데이터 루트: `datasets/MP/`, `datasets/ML/`
+
 ### Phase 2: 스크린샷 수집
 ```powershell
 # 스크린샷 수집 도구 실행

@@ -1,5 +1,5 @@
 # YOLO 학습 데이터셋 설정 파일 (MP)
-# MP 게임 전용 데이터 구성
+# MP 게임(메이플스토리) 전용 - 게임 내 객체 탐지
 
 # 데이터셋 루트
 path: ./datasets/MP
@@ -7,13 +7,16 @@ train: images/train
 val: images/val
 test: images/test
 
-# 클래스 정의 (필요에 맞게 수정)
+# 클래스 정의 (메이플스토리 탐지 대상 객체)
+# 실제 사냥터/몬스터에 맞춰 수정 필요
 names:
-  0: skill_cooldown
-  1: buff_time_low
-  2: exp_doping_active
-  3: exp_doping_missing
-  4: skill_ready
+  0: monster_common       # 일반 몬스터 (스텀프, 슬라임 등)
+  1: monster_elite        # 엘리트 몬스터
+  2: buff_icon_exp        # 경험치 버프 아이콘
+  3: buff_icon_drop       # 드롭률 버프 아이콘
+  4: npc_portal           # 포탈 NPC
+  5: item_meso            # 메소 드롭
+  6: skill_icon_ready     # 사용 가능한 스킬 아이콘
 
 # 클래스 개수 (names 길이와 일치)
-nc: 5
+nc: 7

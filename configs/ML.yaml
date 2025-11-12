@@ -19,3 +19,6 @@ yolo:
 screen:
   monitor: 1
   capture_fps: 12
+
+logging:
+  file: 'logs/perceptive_ai_ML.log'
