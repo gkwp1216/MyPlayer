@@ -8,8 +8,29 @@ timers:
   skill_variance: 5
 
 keybindings:
-  buff_key: '-'    # ML 게임에서 버프 키
-  skill_key: 'F2'  # ML 게임에서 설치기 키
+  # 구 키 (Phase 1용)
+  buff_key: '-'         
+  skill_key: 'F2'       
+  
+  # RL 에이전트 행동 매핑 (실제 사용 키)
+  move_up: 'up'         # 위로 이동 (로프/사다리)
+  move_down: 'down'     # 아래로 이동 (로프/사다리)
+  move_left: 'left'     # 왼쪽 이동
+  move_right: 'right'   # 오른쪽 이동
+  
+  # 주력 스킬 (사냥)
+  attack: 'a'           # 힐/공격기 (몬스터 근처에서)
+  teleport: 'v'         # 텔레포트 (이동기, 접근용)
+  
+  # 버프 스킬 (주기적 사용)
+  buff_holy: 'd'        # 홀리심볼 (2분마다)
+  buff_bless: 'shift'   # 블레스 (3분마다)
+  buff_invin: 'alt'     # 인빈서블 (5분마다)
+  summon_dragon: 'home' # 서먼 드래곤 소환 (150초마다)
+  
+  # 포션 (필요시)
+  potion_hp: 'delete'   # HP 포션 (기본값)
+  potion_mp: 'end'      # MP 포션 (기본값)
 
 yolo:
   model_path: 'models/ml_best.pt'

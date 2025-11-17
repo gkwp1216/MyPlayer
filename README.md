@@ -1,190 +1,285 @@
-# 🍁 Project: "Perceptive-AI" (가제)
+# MyPlayer 🎮
 
-## 📊 현재 진행 상황
+**실시간 강화학습을 통한 자동 게임 플레이 AI**
 
-| Phase | 상태 | 진행률 | 다음 단계 |
-|-------|------|--------|-----------|
-| **Phase 0** | ✅ 완료 | 100% | - |
-| **Phase 1** | ✅ 구조 완성 | 90% | 실제 테스트 필요 |
-| **Phase 2** | 🔄 진행 중 | 30% | 스크린샷 수집 중 |
-| **Phase 3** | ⏳ 대기 | 0% | Phase 2 완료 후 시작 |
+## 📊 현재 상태
 
-**최근 업데이트**: 2025-11-06
-- ✅ 의존성 설치 완료 (Python 3.14, PyTorch, YOLO, OpenCV 등)
-- ✅ Phase 2 데이터셋 구조 및 도구 준비 완료
-- ✅ 5개 클래스 정의 완료 (스킬 쿨타임, 버프 시간, 경험치 도핑 등)
-- 🔄 스크린샷 수집 도구 준비 완료 → 수집 시작 대기
+| 구성요소 | 상태 | 설명 |
+|---------|------|------|
+| **실시간 RL 환경** | ✅ 완료 | 게임 직접 제어 + 보상 감지 |
+| **보상 감지 시스템** | ✅ 완료 | 경험치/HP 픽셀 감지 |
+| **ROI 설정 도구** | ✅ 완료 | 마우스 드래그 방식 |
+| **학습 스크립트** | ✅ 완료 | PPO + 실시간 피드백 |
+| **테스트 도구** | ✅ 완료 | GUI/CLI 테스트 지원 |
 
----
-
-## 1. 프로젝트 개요
-
-본 프로젝트는 Python과 **YOLO(You Only Look Once)** 객체 탐지 모델을 활용하여, 메이플스토리 내의 **버프 상태**, **스킬 쿨타임**, **경험치 도핑 상태**를 실시간으로 "인지"하고 "판단"하는 지능형 AI 에이전트 개발을 목표로 합니다.
-
-단순한 입력을 흉내 내는 것이 아니라, YOLO를 "눈"으로 사용하여 게임 UI 상태를 실시간으로 파악하고, 이를 기반으로 최적의 행동(스킬 사용, 버프 사용, 위치 이동)을 결정합니다.
-
-모든 행동 트리거는 **"인간화된 무작위성"**을 기반으로 하여 봇 탐지를 회피하는 것을 최우선 원칙으로 합니다.
-
-## 2. 핵심 목표 (Objectives)
-
--   [x] **(Phase 0) 프로젝트 구조 및 환경 설정:** 완료 ✅
--   [x] **(최우선) 인간화 (Humanization):** 모든 시간 기반 입력(버프, 스킬)이 고정된 간격이 아닌, 무작위적인 시간 범위 내에서 작동 - 구현 완료 ✅
--   [ ] **(Phase 1) 타이머 기반 자동화:** 약 30분 주기 버프, 1분 주기 설치기를 무작위 간격으로 자동 실행 - 구조 완성 🔄
--   [ ] **(Phase 2) YOLO 기반 UI 상태 인식:** 다음 5가지 상태를 실시간으로 탐지:
-    1.  **스킬 쿨타임 확인**: 쿨타임 중인 스킬 탐지 → 사냥 계속
-    2.  **버프 지속시간 임박**: 10초 이하 버프 탐지 → 버프 위치로 이동 및 재사용
-    3.  **경험치 도핑 활성화**: 도핑 버프 존재 확인 → 정상 진행
-    4.  **경험치 도핑 부재**: 도핑 없음 탐지 → 즉시 도핑 사용
-    5.  **스킬 사용 가능**: 밝은 스킬 아이콘 탐지 → 즉시 스킬 사용
--   [ ] **(Phase 3) 판단 및 행동 통합:** Phase 1의 타이머와 Phase 2의 YOLO "눈"을 결합하여 지능형 행동 완성
-
-## 3. 기술 스택 (Technology Stack)
-
-### ✅ 설치 완료
--   **언어:** `Python 3.14.0` ✅
--   **핵심 자동화 라이브러리:**
-    -   `pyautogui 0.9.54`: 가상 키보드 및 마우스 입력 제어 ✅
-    -   `pynput 1.8.1`: 키보드 이벤트 감지 (녹화 기능) ✅
-    -   `random`: 모든 시간 간격에 무작위성을 부여 (Python 내장) ✅
-    -   `time`: 스크립트 실행 시간 및 딜레이 측정 (Python 내장) ✅
--   **AI / 인식 (Perception):**
-    -   **`ultralytics 8.3.225` (YOLOv8):** 실시간 객체 탐지 모델 ✅
-    -   **`torch 2.9.0` (PyTorch):** YOLO 실행 엔진 ✅
-    -   **`torchvision 0.24.0`:** 컴퓨터 비전 라이브러리 ✅
-    -   `mss 10.1.0`: 실시간 화면 캡처 ✅
-    -   `opencv-python 4.11.0.86`: 이미지 처리 ✅
-    -   `numpy 2.3.4`: 좌표 및 데이터 처리 ✅
--   **설정 및 유틸리티:**
-    -   `pyyaml 6.0.3`: 설정 파일 관리 ✅
-    -   `pillow 12.0.0`: 이미지 처리 ✅
-    -   `matplotlib 3.10.7`: 시각화 (YOLO 학습용) ✅
-
-### 🔧 라벨링 도구 (선택)
--   `Roboflow` (온라인): YOLO 학습을 위한 이미지 라벨링 - 추천 ⭐
--   `LabelImg` (오프라인): 로컬 라벨링 도구
+**최근 업데이트**: 2025-11-18
+- ✅ 오프라인 RL → 실시간 RL로 전환 (몬스터 추적 문제 해결)
+- ✅ 경험치/HP 바 픽셀 감지를 통한 실시간 보상 시스템
+- ✅ 버프 쿨타임 관리 + 공격 지속 시간 개선
+- ✅ TensorBoard 모니터링 + ESC 안전 중지
+- 🎯 **다음 단계**: ROI 설정 → 실시간 학습 시작
 
 ---
 
-## 4. 개발 로드맵 (Roadmap)
+## 🎯 프로젝트 개요
 
-### Phase 1: "인간화된" 타이머 골격 (The Heartbeat)
+**MyPlayer**는 실제 게임과 상호작용하며 학습하는 강화학습 기반 게임 봇입니다.
 
-**목표:** AI의 행동을 "트리거"하는 핵심 스케줄러 구현. 봇 탐지를 피하기 위해 모든 주기를 무작위화.
+### 핵심 특징
+- 🎮 **실시간 학습**: 에이전트가 직접 게임을 플레이
+- 📊 **보상 감지**: 경험치 바 증가 → 몬스터 처치 성공
+- 💚 **피해 감지**: HP 바 감소 → 위험 신호
+- 🎯 **목표 지향**: 행동-결과 인과관계 학습
+- ⏱️ **쿨타임 관리**: 버프 스킬 효율적 사용
 
-**핵심 로직:**
+### 기술 스택
+- **강화학습**: Stable-Baselines3 PPO
+- **환경**: Gymnasium + 실시간 게임 제어
+- **화면 캡처**: mss (스레드 안전)
+- **입력 제어**: keyboard 라이브러리
+- **보상 감지**: OpenCV HSV 색상 분석
 
-1.  **30분 경험치 버프를 유지하며, 약 1분가량 지속되는 설치기 2개를 관리하며 통상 공격을 통해 몬스터를 잡아야 함:** `BUFF_BASE = 1800초` + `random.uniform(-120, 120)` (약 28~32분).
-2.  **1분 설치기:** `SKILL_BASE = 60초` + `random.uniform(-5, 5)` (약 55~65초).
-3.  **지속적 무작위성:** 스킬/버프 사용 후, 다음 실행 딜레이(`_next_delay`) 값을 **매번 새로 뽑아서** 패턴 누적을 방지.
+## 🚀 빠른 시작
 
-*(이 단계에서는 1분마다 `pyautogui.press('F1')`만 눌러도 되지만, Phase 3에서 AI 로직으로 대체됩니다.)*
+### 1단계: 환경 설정
+```powershell
+# 가상환경 활성화
+.\venv\Scripts\Activate.ps1
 
----
+# 패키지 설치 (최초 1회)
+pip install -r requirements.txt
+```
+- **게임 실행 후** 화면 캡처
+- 마우스 드래그로 영역 지정:
+  - 경험치 바 (노란색/파란색 바)
+  - HP 바 (빨간색 바)
+  - 플레이어 위치 (선택사항)
+- `configs/roi_settings.json` 자동 생성
 
-### Phase 2: 인식 모델 훈련 (The Eyes) - 🔄 진행 중
+### 3단계: 실시간 학습 (1-2시간)
+```powershell
+# 캐릭터를 안전한 사냥터에 배치 후
+py tools/train_realtime_rl.py --timesteps 50000
 
-**목표:** `YOLOv8n` 모델을 커스텀 학습시켜, 메이플스토리 화면에서 **버프 상태**, **스킬 쿨타임**, **경험치 도핑 상태**를 실시간으로 탐지하도록 훈련.
-
-**✅ 완료된 작업:**
--   [x] 5개 클래스 정의 완료
-    -   `skill_cooldown`: 스킬 쿨타임 상태
-    -   `buff_time_low`: 버프 지속시간 임박 (10초 이하)
-    -   `exp_doping_active`: 경험치 도핑 활성화
-    -   `exp_doping_missing`: 경험치 도핑 부재
-    -   `skill_ready`: 스킬 사용 가능
--   [x] 데이터셋 디렉토리 구조 생성 (`datasets/raw/`, `datasets/images/`, `datasets/labels/`)
--   [x] `data.yaml` 학습 설정 파일 생성
--   [x] 스크린샷 수집 도구 (`tools/screenshot_helper.py`) 생성
--   [x] 데이터셋 분할 도구 (`tools/dataset_splitter.py`) 생성
--   [x] 라벨링 가이드 문서 작성 (`PHASE2_LABELING_GUIDE.md`)
-
-**🔄 진행 중:**
-1.  **데이터 수집:** 각 클래스당 50~200장 스크린샷 수집 (수동)
-    ```powershell
-    py tools/screenshot_helper.py  # F5로 빠른 캡처
-    ```
-2.  **데이터 라벨링:** `Roboflow` 또는 `LabelImg`를 이용해 바운딩 박스 작업
-3.  **모델 훈련:** 라벨링 완료 후 YOLOv8n 모델 학습
-    ```powershell
-    yolo detect train data=data.yaml model=yolov8n.pt epochs=50
-    ```
-4.  **결과물:** `best.pt` (커스텀 "눈" 모델) → `models/` 폴더로 이동
-
-**📖 상세 가이드:**
--   빠른 시작: `PHASE2_QUICKSTART.md`
--   라벨링 기준: `PHASE2_LABELING_GUIDE.md`
-
----
-
-### Phase 3: 판단 및 행동 통합 (The Brain & Hands) - ⏳ 대기
-
-**목표:** Phase 1의 타이머와 Phase 2의 YOLO "눈"을 결합하여 지능형 행동 완성.
-
-**⏳ Phase 2 완료 후 시작**
-
-**통합 의사 코드 (예상 구조):**
-
-```python
-import time
-import random
-import pyautogui
-from src.perception.yolo_detector import YOLODetector
-from src.decision.strategy import StrategyEngine
-
-# --- Phase 2에서 훈련한 모델 로드 ---
-yolo_detector = YOLODetector('models/best.pt')
-strategy_engine = StrategyEngine()
-
-# --- Phase 1: 타이머 설정 ---
-BUFF_BASE, SKILL_BASE = 1800, 60
-last_buff_time, last_skill_time = time.time(), time.time()
-buff_next_delay = BUFF_BASE + random.uniform(-120, 120)
-skill_next_delay = SKILL_BASE + random.uniform(-5, 5)
-
-while True:
-    current_time = time.time()
-    
-    # 실시간 UI 상태 탐지 (Phase 2)
-    detections = yolo_detector.detect()
-    
-    # 버프 타이머 임박 탐지
-    if 'buff_time_low' in [d['class'] for d in detections]:
-        # 버프 위치로 이동 후 재사용
-        pyautogui.press('=')  # 버프 키
-        print("[Log] 버프 시간 임박 - 버프 재사용")
-        last_buff_time = current_time
-        buff_next_delay = BUFF_BASE + random.uniform(-120, 120)
-    
-    # 경험치 도핑 확인
-    if 'exp_doping_missing' in [d['class'] for d in detections]:
-        # 즉시 경험치 도핑 사용
-        print("[Log] 경험치 도핑 없음 - 도핑 사용")
-        # TODO: 도핑 사용 로직
-    
-    # 스킬 사용 가능 확인
-    if 'skill_ready' in [d['class'] for d in detections]:
-        if (current_time - last_skill_time) > skill_next_delay:
-            # 의사결정 엔진으로 행동 판단
-            action = strategy_engine.decide_skill_action(detections)
-            
-            if action:
-                print(f"[Log] 스킬 사용: {action}")
-                # TODO: 스킬 실행 로직
-                last_skill_time = current_time
-                skill_next_delay = SKILL_BASE + random.uniform(-5, 5)
-    
-    time.sleep(0.1)  # CPU 사용률 조절
+# 백그라운드 모니터링 (다른 터미널)
+tensorboard --logdir logs/realtime/ML
 ```
 
-**핵심 개선 사항**:
-- YOLO 탐지 결과를 기반으로 **상황에 맞는 행동** 실행
-- 버프 시간 임박 시 자동 갱신
-- 경험치 도핑 상태 실시간 모니터링
-- 스킬 쿨타임 확인 후 사용
+**⚠️ 학습 중 주의사항:**
+- 게임 창을 최상단 유지
+- 마우스/키보드 건드리지 말 것
+- 자동 포션 설정 권장
+- ESC로 안전 중지 가능
+
+### 4단계: 테스트
+```powershell
+py tools/test_agent_gui.py
+# → models/realtime/ML/ML_ppo_realtime_final.zip 선택
+```
 
 ---
 
-## 5. 프로젝트 구조
+## 📊 보상 함수 설계
+
+### 즉각 보상 (게임 상태 변화)
+| 상황 | 보상 | 의미 |
+|------|------|------|
+| 경험치 획득 | +1.0 | 몬스터 처치 성공 ✅ |
+| HP 감소 | -0.5 | 피격 (위험) ⚠️ |
+| 공격 타격 이펙트 | +0.3 | 타격 확인 |
+| 텔레포트 이동 | +0.2 | 성공적 이동 |
+| 정지 상태 | -0.05 | 행동 유도 |
+
+### 행동별 보상
+| 행동 | 보상 | 설명 |
+|------|------|------|
+| 공격/텔포 | +0.1 | 적극적 행동 장려 |
+| 이동 | +0.05 | 탐험 장려 |
+| Idle | -0.1 | 정지 방지 |
+| 버프 (쿨타임) | 무시 | 쿨타임 중 스킵 |
+
+### 버프 쿨타임 관리
+- D (홀리심볼): 2분
+- Shift (블레스): 3분
+- Alt (인빈서블): 5분
+- Home (서먼 드래곤): 150초
+
+---
+
+## 🏗️ 시스템 아키텍처
+
+```
+┌─────────────────────────────────────┐
+│     실시간 RL 게임 봇 시스템          │
+└─────────────────────────────────────┘
+    │
+    ├─ 게임 상태 감지 (reward_detector.py)
+    │  ├─ 경험치 바 감지 (HSV 노란색)
+    │  ├─ HP 바 감지 (HSV 빨간색)
+    │  └─ 화면 변화 감지 (이펙트)
+    │
+    ├─ 실시간 환경 (rl_env_realtime.py)
+    │  ├─ Observation: 84x84x4 그레이스케일
+    │  ├─ Action Space: 11개 행동
+    │  │   0: Idle
+    │  │   1-2: 좌/우 이동
+    │  │   3: 텔레포트
+    │  │   4: 공격
+    │  │   5-7: 버프 (쿨타임 관리)
+    │  │   8-9: 상/하 이동
+    │  │   10: 서먼
+    │  ├─ Reward: 실시간 피드백
+    │  └─ Episode: 1000 스텝 (약 2분)
+    │
+    ├─ PPO 에이전트 (train_realtime_rl.py)
+    │  ├─ CnnPolicy (512x512)
+    │  ├─ Learning Rate: 0.0001
+    │  ├─ TensorBoard 모니터링
+    │  └─ Checkpoint (5000 스텝마다)
+    │
+    └─ 테스트 도구
+       ├─ test_agent_gui.py (GUI)
+       └─ test_pixel_agent.py (CLI)
+```
+
+---
+
+## 📁 프로젝트 구조
+
+```
+MyPlayer/
+├── tools/
+│   ├── setup_roi.py           # ROI 설정 도구
+│   ├── train_realtime_rl.py   # 실시간 학습
+│   ├── test_agent_gui.py      # GUI 테스트
+│   └── test_pixel_agent.py    # CLI 테스트
+│
+├── src/
+│   ├── rl_env_realtime.py     # 실시간 RL 환경
+│   ├── reward_detector.py     # 보상 감지
+│   └── utils/
+│       ├── config_loader.py   # 설정 로더
+│       └── logger.py          # 로깅
+│
+├── configs/
+│   ├── ML.yaml                # 게임 설정
+│   └── roi_settings.json      # ROI 좌표 (자동생성)
+│
+├── models/
+│   └── realtime/ML/           # 학습된 모델
+│
+├── logs/
+│   └── realtime/ML/           # TensorBoard 로그
+│
+└── docs/
+    └── REALTIME_RL_DESIGN.md  # 상세 설계 문서
+```
+
+---
+
+## 📈 학습 진행 단계
+
+### Phase 1: 탐험 (0-20k 스텝)
+- **탐험률**: 30% 랜덤 행동
+- **목표**: 다양한 상황 경험
+- **예상 결과**: 불규칙한 움직임, 낮은 보상
+
+### Phase 2: 활용 (20k-40k 스텝)
+- **탐험률**: 10% 랜덤 행동
+- **목표**: V→A 패턴 확립
+- **예상 결과**: 몬스터 처치 시작
+
+### Phase 3: 최적화 (40k+ 스텝)
+- **탐험률**: 5% 랜덤 행동
+- **목표**: 효율적인 사냥
+- **예상 결과**: 안정적인 플레이
+
+**예상 총 학습 시간**: 6-9시간 (50k 스텝)
+
+---
+
+## 🔧 설정 파일
+
+### configs/ML.yaml
+```yaml
+name: ML
+window_title: "ML"
+keybindings:
+  move_left: 'left'
+  move_right: 'right'
+  move_up: 'up'
+  move_down: 'down'
+  attack: 'a'
+  teleport: 'v'
+  buff_holy: 'd'        # 2분 쿨타임
+  buff_bless: 'shift'   # 3분 쿨타임
+  buff_invin: 'alt'     # 5분 쿨타임
+  summon_dragon: 'home' # 150초 쿨타임
+```
+
+### configs/roi_settings.json (setup_roi.py 실행 시 생성)
+```json
+{
+  "exp_bar": {"x": 100, "y": 950, "w": 500, "h": 20},
+  "hp_bar": {"x": 100, "y": 920, "w": 200, "h": 20},
+  "player": {"x": 800, "y": 400, "w": 100, "h": 150}
+}
+```
+
+---
+
+## 🧪 실험 결과 (예상)
+
+### 성공 지표
+- ✅ 몬스터 추적 및 처치
+- ✅ V→A 사냥 패턴 확립
+- ✅ 버프 주기적 사용
+- ✅ 피해 최소화 (HP 유지)
+
+### 보상 그래프 (TensorBoard)
+- 초기: 평균 보상 -5 ~ 0
+- 20k 스텝: 평균 보상 5 ~ 10
+- 50k 스텝: 평균 보상 15 ~ 25
+
+---
+
+## 🐛 문제 해결
+
+### Q: ROI 설정이 작동하지 않아요
+**A**: `py tools/setup_roi.py` 재실행 후 정확히 드래그. 경험치 바 전체를 포함해야 합니다.
+
+### Q: 학습 중 에이전트가 멈춰요
+**A**: ESC로 중지 후 게임 상태 확인 (사망/버그). 체크포인트에서 재시작 가능.
+
+### Q: 경험치 감지가 안 돼요
+**A**: ROI가 노란색 바를 정확히 캡처하는지 확인. HSV 범위 조정이 필요할 수 있습니다.
+
+### Q: 키 입력이 안 돼요
+**A**: 관리자 권한으로 실행 필요할 수 있습니다.
+
+### Q: 학습이 너무 느려요
+**A**: `--timesteps 10000`으로 테스트 실행. `frame_delay` 조정 (기본 0.1초).
+
+---
+
+## 📚 참고 자료
+
+- [Stable-Baselines3 공식 문서](https://stable-baselines3.readthedocs.io/)
+- [실시간 RL 설계 문서](docs/REALTIME_RL_DESIGN.md)
+- [PPO 알고리즘 논문](https://arxiv.org/abs/1707.06347)
+
+---
+
+## ⚠️ 면책 조항
+
+이 프로젝트는 **교육 목적**으로 제작되었습니다.
+게임 이용약관을 준수하여 사용하세요.
+
+---
+
+**Last Updated**: 2025-11-18  
+**Version**: 3.0 (실시간 RL)  
+**Status**: ✅ 개발 완료, 학습 준비 완료
 
 ```
 MyPlayer/
