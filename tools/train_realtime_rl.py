@@ -64,7 +64,7 @@ def main():
     parser = argparse.ArgumentParser(description="실시간 RL 학습")
     parser.add_argument("--game", default="ML", help="게임 이름")
     parser.add_argument("--timesteps", type=int, default=50000, help="학습 타임스텝")
-    parser.add_argument("--learning-rate", type=float, default=0.0001, help="학습률")
+    parser.add_argument("--learning-rate", type=float, default=0.0003, help="학습률")
     parser.add_argument("--frame-width", type=int, default=84, help="프레임 너비")
     parser.add_argument("--frame-height", type=int, default=84, help="프레임 높이")
     parser.add_argument("--frame-stack", type=int, default=4, help="프레임 스택")
@@ -133,13 +133,15 @@ def main():
             "CnnPolicy",
             env,
             learning_rate=args.learning_rate,
-            n_steps=2048,
-            batch_size=64,
+            n_steps=1024,  # 더 자주 업데이트 (2048→1024)
+            batch_size=32,  # 더 작은 배치로 빠른 학습
             n_epochs=10,
             gamma=0.99,
             gae_lambda=0.95,
             clip_range=0.2,
-            ent_coef=0.01,  # 탐험 장려
+            ent_coef=0.05,  # 탐험 대폭 증가 (0.01→0.05)
+            vf_coef=0.5,
+            max_grad_norm=0.5,
             policy_kwargs=policy_kwargs,
             verbose=1,
             tensorboard_log=f"logs/realtime/{args.game}"

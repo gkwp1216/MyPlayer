@@ -67,6 +67,13 @@ class RealtimeGameEnv(gym.Env):
         # 텔레포트 방향 기억
         self.last_move_direction = 'right'  # 기본 방향
         
+        # 행동 이력 추적 (시퀀스 학습용)
+        self.action_history = deque(maxlen=10)  # 최근 10개 행동
+        self.last_action = None
+        self.last_action_time = 0
+        self.stuck_count = 0  # 벽 충돌 감지
+        self.last_position_hash = None
+        
         # ROI 설정 로드
         self.roi_settings = self._load_roi_settings()
         
@@ -252,7 +259,7 @@ class RealtimeGameEnv(gym.Env):
                 keyboard.release(key)
     
     def _calculate_reward(self, action, current_frame):
-        """보상 계산 (경험치 획득 중심)"""
+        """보상 계산 (경험치 획득 중심 + 행동 패턴 유도)"""
         reward = 0.0
         
         # 1. 경험치 획득 감지 (핵심!)
@@ -261,32 +268,69 @@ class RealtimeGameEnv(gym.Env):
             reward += exp_reward
             print(f"🎉 몬스터 처치! +{exp_reward}")
         
-        # 2. 화면 변화 감지 (움직임/전투)
+        # 2. 화면 변화 감지 (움직임/전투/벽 충돌)
+        change_score = 0.0
         if self.last_frame is not None:
             diff = cv2.absdiff(current_frame, self.last_frame)
             change_score = np.mean(diff) / 255.0
             
+            # 벽 충돌 감지 (이동/텔포 했는데 화면 변화 없음)
+            if action in [1, 2, 3] and change_score < 0.03:
+                self.stuck_count += 1
+                reward -= 0.3  # 벽 충돌 페널티
+                if self.stuck_count > 3:
+                    reward -= 0.5  # 계속 벽에 박으면 더 큰 페널티
+            else:
+                self.stuck_count = max(0, self.stuck_count - 1)  # 회복
+            
             # 공격 중 화면 변화 = 타격 이펙트
             if action == 4 and change_score > 0.1:
-                reward += 0.3
+                reward += 0.4
             
             # 텔포 후 화면 변화 = 이동 성공
             if action == 3 and change_score > 0.2:
+                reward += 0.3
+            
+            # 정적 화면 = 정지 상태 (더 강한 페널티)
+            if change_score < 0.05 and action != 4:  # 공격 중이 아닌데 정적
+                reward -= 0.1
+        
+        # 3. 행동 시퀀스 보상 (효율적인 패턴 학습)
+        if len(self.action_history) >= 2:
+            prev_action = self.action_history[-1]
+            
+            # 텔레포트 → 공격 콤보 (핵심 패턴!)
+            if prev_action == 3 and action == 4:
+                reward += 0.8
+                print("⚡ 텔포→공격 콤보!")
+            
+            # 이동 → 공격 (좋은 패턴)
+            elif prev_action in [1, 2] and action == 4:
+                reward += 0.3
+            
+            # 공격 → 이동/텔포 (다음 몬스터 찾기)
+            elif prev_action == 4 and action in [1, 2, 3]:
                 reward += 0.2
             
-            # 정적 화면 = 정지 상태
-            if change_score < 0.05:
-                reward -= 0.05
+            # 같은 행동 반복 (다양성 부족)
+            recent_actions = list(self.action_history)[-5:]
+            if len(set(recent_actions)) == 1 and action == recent_actions[0]:
+                reward -= 0.15  # 단조로움 페널티
         
-        # 3. 행동별 기본 보상 (적극적 플레이 유도)
-        if action == 4:  # 공격 (매우 높은 보상!)
-            reward += 0.5
+        # 4. 행동별 기본 보상 (적극적 플레이 유도)
+        if action == 4:  # 공격
+            reward += 0.6  # 공격을 더 장려
         elif action == 3:  # 텔포
-            reward += 0.15
+            reward += 0.2
         elif action in [1, 2]:  # 이동
-            reward += 0.05
+            reward += 0.08
         elif action == 0:  # idle
-            reward -= 0.2
+            reward -= 0.3  # idle을 더 강하게 억제
+        
+        # 행동 이력 업데이트
+        self.action_history.append(action)
+        self.last_action = action
+        self.last_action_time = time.time()
         
         return reward
     
