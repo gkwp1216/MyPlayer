@@ -79,6 +79,7 @@ class RealtimeGameEnv(gym.Env):
         self.dialog_template = self._load_template("assets/IFWARNINGappearClick_2.png")
         self.last_danger_check = 0
         self.danger_check_interval = 1.0  # 1초마다 체크
+        self.danger_detection_count = 0  # 연속 감지 카운터 (오탐지 방지)
         
         print("✅ 실시간 RL 환경 초기화 완료")
         if self.roi_settings:
@@ -341,14 +342,23 @@ class RealtimeGameEnv(gym.Env):
         if not hasattr(self, '_last_debug_print'):
             self._last_debug_print = 0
         if current_time - self._last_debug_print > 10:
-            print(f"🔍 WARNING 감지 체크 중... (최대 일치도: {max_val:.2f}, 임계값: 0.5)")
+            print(f"🔍 WARNING 감지 체크 중... (최대 일치도: {max_val:.2f}, 임계값: 0.7)")
             self._last_debug_print = current_time
         
         # 임계값 이상이면 위험 몬스터 감지!
-        if max_val > 0.5:  # 50% 이상 일치 (임계값 낮춤)
-            print(f"🚨 WARNING 몬스터 감지! (일치도: {max_val:.2f})")
-            # NPC 클릭 → 대화 수락 → 학습 계속 (귀환하지 않음!)
-            self._emergency_escape(frame)
+        if max_val > 0.7:  # 70% 이상 일치 (오탐지 방지)
+            self.danger_detection_count += 1
+            print(f"⚠️  WARNING 감지 ({self.danger_detection_count}/2회, 일치도: {max_val:.2f})")
+            
+            # 연속 2회 감지 시에만 회피 행동 (오탐지 방지)
+            if self.danger_detection_count >= 2:
+                print(f"🚨 WARNING 몬스터 확정! 회피 시작...")
+                self._emergency_escape(frame)
+                self.danger_detection_count = 0  # 카운터 리셋
+        else:
+            # 감지되지 않으면 카운터 리셋
+            if self.danger_detection_count > 0:
+                self.danger_detection_count = 0
     
     def _emergency_escape(self, frame):
         """위협 회피 처리 (NPC 클릭 → 대화 수락 → 학습 계속)"""
