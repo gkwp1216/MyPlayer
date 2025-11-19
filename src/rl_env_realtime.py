@@ -63,18 +63,41 @@ class RealtimeGameEnv(gym.Env):
         self.buff_cooldowns = {5: 120, 6: 180, 7: 300, 10: 150}
         self.last_buff_time = {5: 0, 6: 0, 7: 0, 10: 0}
         
+        # 텔레포트 방향 기억
+        self.last_move_direction = 'right'  # 기본 방향
+        
         # ROI 설정 로드
         self.roi_settings = self._load_roi_settings()
         
-        # 경험치 감지
+        # 경험치 감지만 사용
         self.last_exp_pixels = None
-        self.last_hp_pixels = None
+        
+        # 안전장치 (템플릿 이미지 로드)
+        self.danger_monster_template = self._load_template("assets/WARNING.png")
+        self.npc_template = self._load_template("assets/IFWARNINGappearClick.png")
+        self.dialog_template = self._load_template("assets/IFWARNINGappearClick_2.png")
+        self.last_danger_check = 0
+        self.danger_check_interval = 1.0  # 1초마다 체크
         
         print("✅ 실시간 RL 환경 초기화 완료")
         if self.roi_settings:
             print(f"📍 ROI 설정 로드: {list(self.roi_settings.keys())}")
         else:
             print("⚠️  ROI 미설정 (기본 보상 함수 사용)")
+        
+        # 안전장치 상태 출력
+        templates_loaded = sum([
+            self.danger_monster_template is not None,
+            self.npc_template is not None,
+            self.dialog_template is not None
+        ])
+        if templates_loaded == 3:
+            print("🛡️ WARNING 몬스터 회피 시스템 활성화 (3/3 템플릿 로드)")
+            print("   → 감지 시: NPC 클릭 → 대화 수락 → 학습 계속")
+        elif templates_loaded > 0:
+            print(f"⚠️ 일부 템플릿만 로드됨 ({templates_loaded}/3)")
+        else:
+            print("💡 WARNING 회피 시스템 비활성화 (assets/*.png 없음)")
     
     def _load_roi_settings(self):
         """ROI 설정 로드"""
@@ -84,6 +107,15 @@ class RealtimeGameEnv(gym.Env):
                 return json.load(f)
         return None
     
+    def _load_template(self, path):
+        """템플릿 이미지 로드 (그레이스케일)"""
+        template_path = Path(path)
+        if template_path.exists():
+            template = cv2.imread(str(template_path))
+            if template is not None:
+                return template  # 컬러로 유지 (더 정확한 매칭)
+        return None
+    
     def reset(self, seed=None, options=None):
         """환경 초기화"""
         super().reset(seed=seed)
@@ -91,6 +123,7 @@ class RealtimeGameEnv(gym.Env):
         self.step_count = 0
         self.episode_reward = 0
         self.last_buff_time = {5: 0, 6: 0, 7: 0, 10: 0}
+        self.last_move_direction = 'right'  # 에피소드마다 초기화
         
         # 초기 프레임 캡처
         screenshot = self.sct.grab(self.monitor)
@@ -122,6 +155,9 @@ class RealtimeGameEnv(gym.Env):
         current_frame = np.array(screenshot)
         current_frame = cv2.cvtColor(current_frame, cv2.COLOR_BGRA2BGR)
         
+        # 🚨 안전장치 2: 위험 몬스터 감지
+        self._check_danger_monster(current_frame)
+        
         # 4. 보상 계산 (화면 변화 기반)
         reward = self._calculate_reward(action, current_frame)
         
@@ -152,6 +188,10 @@ class RealtimeGameEnv(gym.Env):
     
     def _execute_action(self, action):
         """행동 실행 (키보드 입력)"""
+        # 🚨 안전장치 1: 위 방향키 차단 (포탈 방지)
+        if action == 8:
+            return  # 위 방향키 무시
+        
         action_map = {
             0: None,
             1: self.keybindings.get('move_left', 'left'),
@@ -161,7 +201,7 @@ class RealtimeGameEnv(gym.Env):
             5: self.keybindings.get('buff_holy', 'd'),
             6: self.keybindings.get('buff_bless', 'shift'),
             7: self.keybindings.get('buff_invin', 'alt'),
-            8: self.keybindings.get('move_up', 'up'),
+            8: None,  # 위 방향키 비활성화
             9: self.keybindings.get('move_down', 'down'),
             10: self.keybindings.get('summon_dragon', 'home')
         }
@@ -179,60 +219,75 @@ class RealtimeGameEnv(gym.Env):
                 keyboard.press(key)
                 time.sleep(0.3)
                 keyboard.release(key)
-            elif action in [1, 2, 8, 9]:  # 이동은 짧게
+            elif action == 3:  # 텔레포트는 방향키와 함께!
+                # 마지막 이동 방향 기억 (없으면 랜덤)
+                if not hasattr(self, 'last_move_direction'):
+                    self.last_move_direction = 'right'
+                
+                direction_key = self.keybindings.get(f'move_{self.last_move_direction}', self.last_move_direction)
+                
+                # 방향키 + V 동시 입력
+                keyboard.press(direction_key)
+                keyboard.press(key)
+                time.sleep(0.1)
+                keyboard.release(key)
+                keyboard.release(direction_key)
+                
+            elif action in [1, 2, 9]:  # 이동은 짧게 (위 방향키 제외)
                 keyboard.press(key)
                 time.sleep(0.05)
                 keyboard.release(key)
-            else:  # 텔포/버프는 탭
+                
+                # 좌우 이동 시 방향 기억
+                if action == 1:
+                    self.last_move_direction = 'left'
+                elif action == 2:
+                    self.last_move_direction = 'right'
+                    
+            else:  # 버프는 탭
                 keyboard.press(key)
                 time.sleep(0.05)
                 keyboard.release(key)
     
     def _calculate_reward(self, action, current_frame):
-        """보상 계산 (화면 변화 + 경험치/HP 감지)"""
+        """보상 계산 (경험치 획득 중심)"""
         reward = 0.0
         
-        # 1. 경험치 획득 감지 (가장 중요!)
+        # 1. 경험치 획득 감지 (핵심!)
         exp_reward = self._detect_exp_gain(current_frame)
         if exp_reward > 0:
             reward += exp_reward
-            print(f"🎉 경험치 획득! +{exp_reward}")
+            print(f"🎉 몬스터 처치! +{exp_reward}")
         
-        # 2. HP 감소 감지
-        hp_penalty = self._detect_hp_loss(current_frame)
-        if hp_penalty < 0:
-            reward += hp_penalty
-            print(f"💥 피격! {hp_penalty}")
-        
-        # 3. 화면 변화 감지 (움직임/전투)
+        # 2. 화면 변화 감지 (움직임/전투)
         if self.last_frame is not None:
             diff = cv2.absdiff(current_frame, self.last_frame)
             change_score = np.mean(diff) / 255.0
             
-            # 공격 중 화면 변화 많으면 보상 (몬스터 타격/이펙트)
+            # 공격 중 화면 변화 = 타격 이펙트
             if action == 4 and change_score > 0.1:
                 reward += 0.3
             
-            # 텔포 후 화면 변화 (이동 성공)
+            # 텔포 후 화면 변화 = 이동 성공
             if action == 3 and change_score > 0.2:
                 reward += 0.2
             
-            # 너무 정적이면 패널티 (멈춰있음)
+            # 정적 화면 = 정지 상태
             if change_score < 0.05:
                 reward -= 0.05
         
-        # 4. 행동별 기본 보상
+        # 3. 행동별 기본 보상 (적극적 플레이 유도)
         if action in [3, 4]:  # 텔포, 공격
-            reward += 0.1
+            reward += 0.15
         elif action in [1, 2]:  # 이동
             reward += 0.05
         elif action == 0:  # idle
-            reward -= 0.1
+            reward -= 0.2
         
         return reward
     
     def _detect_exp_gain(self, frame):
-        """경험치 획득 감지 (노란색 바 증가)"""
+        """경험치 획득 감지 (노란색 바 증가) - 몬스터 처치의 증거!"""
         if not self.roi_settings or 'exp_bar' not in self.roi_settings:
             return 0.0
         
@@ -242,7 +297,7 @@ class RealtimeGameEnv(gym.Env):
         # 경험치 바 영역 추출
         exp_roi = frame[y:y+h, x:x+w]
         
-        # 노란색 픽셀 카운트
+        # 노란색 픽셀 카운트 (HSV 색상 공간)
         hsv = cv2.cvtColor(exp_roi, cv2.COLOR_BGR2HSV)
         lower_yellow = np.array([20, 100, 100])
         upper_yellow = np.array([30, 255, 255])
@@ -253,46 +308,90 @@ class RealtimeGameEnv(gym.Env):
         reward = 0.0
         if self.last_exp_pixels is not None:
             pixel_diff = yellow_pixels - self.last_exp_pixels
-            if pixel_diff > 50:  # 충분한 증가
-                reward = 1.0  # 큰 보상! (몬스터 처치)
+            if pixel_diff > 50:  # 충분한 증가 = 몬스터 처치!
+                reward = 2.0  # 매우 큰 보상!
+            elif pixel_diff > 20:  # 작은 증가 = 공유 경험치?
+                reward = 0.5
         
         self.last_exp_pixels = yellow_pixels
         return reward
     
-    def _detect_hp_loss(self, frame):
-        """HP 감소 감지 (빨간색 바 감소)"""
-        if not self.roi_settings or 'hp_bar' not in self.roi_settings:
-            return 0.0
+    def _check_danger_monster(self, frame):
+        """위험 몬스터 감지 및 긴급 귀환"""
+        current_time = time.time()
         
-        roi = self.roi_settings['hp_bar']
-        x, y, w, h = roi['x'], roi['y'], roi['w'], roi['h']
+        # 1초마다 체크 (CPU 부하 방지)
+        if current_time - self.last_danger_check < self.danger_check_interval:
+            return
         
-        # HP 바 영역 추출
-        hp_roi = frame[y:y+h, x:x+w]
+        self.last_danger_check = current_time
         
-        # 빨간색 픽셀 카운트
-        hsv = cv2.cvtColor(hp_roi, cv2.COLOR_BGR2HSV)
-        lower_red1 = np.array([0, 100, 100])
-        upper_red1 = np.array([10, 255, 255])
-        lower_red2 = np.array([170, 100, 100])
-        upper_red2 = np.array([180, 255, 255])
+        # 템플릿이 없으면 패스
+        if self.danger_monster_template is None:
+            return
         
-        mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
-        mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
-        mask = cv2.bitwise_or(mask1, mask2)
-        red_pixels = np.sum(mask > 0)
+        # 템플릿 매칭 (컬러)
+        result = cv2.matchTemplate(frame, self.danger_monster_template, cv2.TM_CCOEFF_NORMED)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
         
-        # 이전 프레임과 비교
-        penalty = 0.0
-        if self.last_hp_pixels is not None:
-            pixel_diff = red_pixels - self.last_hp_pixels
-            if pixel_diff < -50:  # HP 감소
-                penalty = -0.5
-            elif red_pixels < 100:  # HP 매우 낮음
-                penalty = -1.0
+        # 임계값 이상이면 위험 몬스터 감지!
+        if max_val > 0.7:  # 70% 이상 일치
+            print(f"🚨 WARNING 몬스터 감지! (일치도: {max_val:.2f})")
+            # NPC 클릭 → 대화 수락 → 학습 계속 (귀환하지 않음!)
+            self._emergency_escape(frame)
+    
+    def _emergency_escape(self, frame):
+        """위협 회피 처리 (NPC 클릭 → 대화 수락 → 학습 계속)"""
+        print("⚡ 위협 회피 시작...")
         
-        self.last_hp_pixels = red_pixels
-        return penalty
+        try:
+            import pyautogui
+            
+            # 1단계: NPC 템플릿 매칭 (화면에 항상 존재)
+            if self.npc_template is None:
+                print("❌ NPC 템플릿 없음")
+                return
+            
+            result = cv2.matchTemplate(frame, self.npc_template, cv2.TM_CCOEFF_NORMED)
+            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+            
+            if max_val > 0.6:  # NPC 발견
+                # NPC 중심 좌표 계산
+                npc_h, npc_w = self.npc_template.shape[:2]
+                npc_x = max_loc[0] + npc_w // 2
+                npc_y = max_loc[1] + npc_h // 2
+                
+                print(f"📍 NPC 클릭 (x={npc_x}, y={npc_y}, 일치도={max_val:.2f})")
+                pyautogui.click(npc_x, npc_y)
+                time.sleep(0.5)
+                
+                # 2단계: 대화창 확인 후 수락 버튼 클릭
+                screenshot = self.sct.grab(self.monitor)
+                new_frame = np.array(screenshot)
+                new_frame = cv2.cvtColor(new_frame, cv2.COLOR_BGRA2BGR)
+                
+                if self.dialog_template is not None:
+                    result2 = cv2.matchTemplate(new_frame, self.dialog_template, cv2.TM_CCOEFF_NORMED)
+                    min_val2, max_val2, min_loc2, max_loc2 = cv2.minMaxLoc(result2)
+                    
+                    if max_val2 > 0.6:  # 대화창 발견
+                        # 수락 버튼 중심 좌표
+                        dialog_h, dialog_w = self.dialog_template.shape[:2]
+                        dialog_x = max_loc2[0] + dialog_w // 2
+                        dialog_y = max_loc2[1] + dialog_h // 2
+                        
+                        print(f"📍 수락 버튼 클릭 (x={dialog_x}, y={dialog_y}, 일치도={max_val2:.2f})")
+                        pyautogui.click(dialog_x, dialog_y)
+                        time.sleep(0.5)
+                        
+                        print("✅ 위협 회피 완료! 학습 계속...")
+                    else:
+                        print("⚠️ 대화창을 찾을 수 없음")
+            else:
+                print("⚠️ NPC를 찾을 수 없음")
+            
+        except Exception as e:
+            print(f"❌ 위협 회피 실패: {e}")
     
     def close(self):
         """환경 종료"""
