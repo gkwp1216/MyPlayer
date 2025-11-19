@@ -15,6 +15,7 @@ import win32con
 from pathlib import Path
 import sys
 import json
+import pyautogui
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.utils.config_loader import load_config
@@ -336,6 +337,13 @@ class RealtimeGameEnv(gym.Env):
         result = cv2.matchTemplate(frame, self.danger_monster_template, cv2.TM_CCOEFF_NORMED)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
         
+        # 디버깅: 매 체크마다 일치도 출력 (10초에 한 번)
+        if not hasattr(self, '_last_debug_print'):
+            self._last_debug_print = 0
+        if current_time - self._last_debug_print > 10:
+            print(f"🔍 WARNING 감지 체크 중... (최대 일치도: {max_val:.2f}, 임계값: 0.5)")
+            self._last_debug_print = current_time
+        
         # 임계값 이상이면 위험 몬스터 감지!
         if max_val > 0.5:  # 50% 이상 일치 (임계값 낮춤)
             print(f"🚨 WARNING 몬스터 감지! (일치도: {max_val:.2f})")
@@ -346,14 +354,12 @@ class RealtimeGameEnv(gym.Env):
         """위협 회피 처리 (NPC 클릭 → 대화 수락 → 학습 계속)"""
         print("⚡ 위협 회피 시작...")
         
+        # 1단계: NPC 템플릿 매칭 (화면에 항상 존재)
+        if self.npc_template is None:
+            print("❌ NPC 템플릿 없음")
+            return
+        
         try:
-            import pyautogui
-            
-            # 1단계: NPC 템플릿 매칭 (화면에 항상 존재)
-            if self.npc_template is None:
-                print("❌ NPC 템플릿 없음")
-                return
-            
             result = cv2.matchTemplate(frame, self.npc_template, cv2.TM_CCOEFF_NORMED)
             min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
             
@@ -388,12 +394,16 @@ class RealtimeGameEnv(gym.Env):
                         
                         print("✅ 위협 회피 완료! 학습 계속...")
                     else:
-                        print("⚠️ 대화창을 찾을 수 없음")
+                        print(f"⚠️ 대화창을 찾을 수 없음 (최대 일치도: {max_val2:.2f})")
             else:
-                print("⚠️ NPC를 찾을 수 없음")
+                print(f"⚠️ NPC를 찾을 수 없음 (최대 일치도: {max_val:.2f})")
+                print(f"   템플릿 크기: {self.npc_template.shape}")
+                print(f"   프레임 크기: {frame.shape}")
             
         except Exception as e:
+            import traceback
             print(f"❌ 위협 회피 실패: {e}")
+            print(traceback.format_exc())
     
     def close(self):
         """환경 종료"""
