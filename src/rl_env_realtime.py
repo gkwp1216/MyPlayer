@@ -201,8 +201,8 @@ class RealtimeGameEnv(gym.Env):
             5: self.keybindings.get('buff_holy', 'd'),
             6: self.keybindings.get('buff_bless', 'shift'),
             7: self.keybindings.get('buff_invin', 'alt'),
-            8: None,  # 위 방향키 비활성화
-            9: self.keybindings.get('move_down', 'down'),
+            8: None,  # 위 방향키 비활성화 (포탈 방지)
+            9: None,  # 아래 방향키 비활성화 (불필요)
             10: self.keybindings.get('summon_dragon', 'home')
         }
         
@@ -233,7 +233,7 @@ class RealtimeGameEnv(gym.Env):
                 keyboard.release(key)
                 keyboard.release(direction_key)
                 
-            elif action in [1, 2, 9]:  # 이동은 짧게 (위 방향키 제외)
+            elif action in [1, 2]:  # 좌우 이동만 (위/아래 비활성화)
                 keyboard.press(key)
                 time.sleep(0.05)
                 keyboard.release(key)
@@ -277,7 +277,9 @@ class RealtimeGameEnv(gym.Env):
                 reward -= 0.05
         
         # 3. 행동별 기본 보상 (적극적 플레이 유도)
-        if action in [3, 4]:  # 텔포, 공격
+        if action == 4:  # 공격 (매우 높은 보상!)
+            reward += 0.5
+        elif action == 3:  # 텔포
             reward += 0.15
         elif action in [1, 2]:  # 이동
             reward += 0.05
@@ -308,9 +310,9 @@ class RealtimeGameEnv(gym.Env):
         reward = 0.0
         if self.last_exp_pixels is not None:
             pixel_diff = yellow_pixels - self.last_exp_pixels
-            if pixel_diff > 50:  # 충분한 증가 = 몬스터 처치!
+            if pixel_diff > 10:  # 임계값 낮춤 (경험치통이 큰 경우 대응)
                 reward = 2.0  # 매우 큰 보상!
-            elif pixel_diff > 20:  # 작은 증가 = 공유 경험치?
+            elif pixel_diff > 5:  # 작은 증가도 감지
                 reward = 0.5
         
         self.last_exp_pixels = yellow_pixels
@@ -335,7 +337,7 @@ class RealtimeGameEnv(gym.Env):
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
         
         # 임계값 이상이면 위험 몬스터 감지!
-        if max_val > 0.7:  # 70% 이상 일치
+        if max_val > 0.5:  # 50% 이상 일치 (임계값 낮춤)
             print(f"🚨 WARNING 몬스터 감지! (일치도: {max_val:.2f})")
             # NPC 클릭 → 대화 수락 → 학습 계속 (귀환하지 않음!)
             self._emergency_escape(frame)
@@ -355,7 +357,7 @@ class RealtimeGameEnv(gym.Env):
             result = cv2.matchTemplate(frame, self.npc_template, cv2.TM_CCOEFF_NORMED)
             min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
             
-            if max_val > 0.6:  # NPC 발견
+            if max_val > 0.5:  # NPC 발견 (임계값 낮춤)
                 # NPC 중심 좌표 계산
                 npc_h, npc_w = self.npc_template.shape[:2]
                 npc_x = max_loc[0] + npc_w // 2
@@ -374,7 +376,7 @@ class RealtimeGameEnv(gym.Env):
                     result2 = cv2.matchTemplate(new_frame, self.dialog_template, cv2.TM_CCOEFF_NORMED)
                     min_val2, max_val2, min_loc2, max_loc2 = cv2.minMaxLoc(result2)
                     
-                    if max_val2 > 0.6:  # 대화창 발견
+                    if max_val2 > 0.5:  # 대화창 발견 (임계값 낮춤)
                         # 수락 버튼 중심 좌표
                         dialog_h, dialog_w = self.dialog_template.shape[:2]
                         dialog_x = max_loc2[0] + dialog_w // 2
