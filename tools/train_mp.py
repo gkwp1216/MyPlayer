@@ -1,8 +1,8 @@
 """
-실시간 강화학습 학습 스크립트
-게임을 플레이하면서 실시간으로 학습
+MP 게임 전용 실시간 강화학습 학습 스크립트
+메이플스토리 사냥을 플레이하면서 실시간으로 학습
 
-사용법: py tools/train_realtime_rl.py --timesteps 50000
+사용법: py tools/train_mp.py --timesteps 50000
 """
 import argparse
 from pathlib import Path
@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
-from src.rl_env_realtime import RealtimeGameEnv
+from src.rl_env_mp import MPRealtimeEnv
 import torch
 import keyboard
 
@@ -31,7 +31,7 @@ class RealtimeTrainingCallback(BaseCallback):
     def _on_step(self):
         """매 스텝마다 호출"""
         # ESC로 중지
-        if 
+        if keyboard.is_pressed('esc'):
             print("\n⏹️  ESC 감지 - 학습 중지")
             return False
         
@@ -61,21 +61,19 @@ class RealtimeTrainingCallback(BaseCallback):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="실시간 RL 학습")
-    parser.add_argument("--game", default="ML", help="게임 이름")
+    parser = argparse.ArgumentParser(description="MP 게임 실시간 RL 학습")
     parser.add_argument("--timesteps", type=int, default=50000, help="학습 타임스텝")
     parser.add_argument("--learning-rate", type=float, default=0.0003, help="학습률")
     parser.add_argument("--frame-width", type=int, default=84, help="프레임 너비")
     parser.add_argument("--frame-height", type=int, default=84, help="프레임 높이")
     parser.add_argument("--frame-stack", type=int, default=4, help="프레임 스택")
-    parser.add_argument("--frame-skip", type=int, default=4, help="프레임 스킵 (행동 반복)")
-    parser.add_argument("--load-model", type=str, help="기존 모델 로드 (계속 학습)")
+    parser.add_argument("--frame-skip", type=int, default=4, help="프레임 스킵")
+    parser.add_argument("--load-model", type=str, help="기존 모델 로드")
     args = parser.parse_args()
     
     print("=" * 60)
-    print("🎮 실시간 강화학습")
+    print("🎮 MP 게임 실시간 강화학습 (메이플스토리)")
     print("=" * 60)
-    print(f"게임: {args.game}")
     print(f"타임스텝: {args.timesteps:,}")
     print(f"학습률: {args.learning_rate}")
     print(f"프레임 크기: {args.frame_width}x{args.frame_height}")
@@ -84,8 +82,8 @@ def main():
     
     # 준비 확인
     print("\n⚠️  실시간 학습 주의사항:")
-    print("  1. 게임이 실행 중이어야 합니다")
-    print("  2. 캐릭터가 안전한 맵에 있어야 합니다")
+    print("  1. 메이플스토리가 실행 중이어야 합니다")
+    print("  2. 캐릭터가 안전한 사냥터에 있어야 합니다")
     print("  3. 마우스/키보드를 건드리지 마세요")
     print("  4. ROI 설정이 되어있어야 합니다 (py tools/setup_roi.py)")
     print("  5. ESC로 언제든 중지 가능")
@@ -105,10 +103,9 @@ def main():
         print(f"   {i}초...")
         time.sleep(1)
     
-    # 환경 생성
-    print("\n📊 환경 생성 중...")
-    env = RealtimeGameEnv(
-        game=args.game,
+    # MP 환경 생성
+    print("\n📊 MP 환경 생성 중...")
+    env = MPRealtimeEnv(
         frame_width=args.frame_width,
         frame_height=args.frame_height,
         frame_stack=args.frame_stack,
@@ -136,29 +133,29 @@ def main():
             "CnnPolicy",
             env,
             learning_rate=args.learning_rate,
-            n_steps=2048,  # 프레임 스킵으로 인해 더 많은 스텝 수집 가능
-            batch_size=64,  # 배치 사이즈 증가
+            n_steps=2048,
+            batch_size=64,
             n_epochs=10,
             gamma=0.99,
             gae_lambda=0.95,
             clip_range=0.2,
-            ent_coef=0.05,  # 탐험 대폭 증가 (0.01→0.05)
+            ent_coef=0.05,
             vf_coef=0.5,
             max_grad_norm=0.5,
             policy_kwargs=policy_kwargs,
             verbose=1,
-            tensorboard_log=f"logs/realtime/{args.game}"
+            tensorboard_log="logs/realtime/MP"
         )
         print("✅ 모델 생성 완료")
     
     # 콜백 설정
-    checkpoint_dir = Path(f"models/realtime/{args.game}/checkpoints")
+    checkpoint_dir = Path("models/realtime/MP/checkpoints")
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     
     checkpoint_callback = CheckpointCallback(
         save_freq=5000,
         save_path=str(checkpoint_dir),
-        name_prefix=f"{args.game}_ppo_realtime"
+        name_prefix="MP_ppo_realtime"
     )
     
     training_callback = RealtimeTrainingCallback(verbose=1)
@@ -166,7 +163,7 @@ def main():
     # 학습 시작
     print("\n🚀 학습 시작!")
     print("📊 TensorBoard 모니터링:")
-    print(f"   tensorboard --logdir logs/realtime/{args.game}")
+    print("   tensorboard --logdir logs/realtime/MP")
     print("\n⏹️  ESC 키를 눌러 안전하게 중지")
     print("=" * 60)
     
@@ -182,9 +179,9 @@ def main():
         print(f"\n❌ 에러 발생: {e}")
     finally:
         # 최종 모델 저장
-        final_model_dir = Path(f"models/realtime/{args.game}")
+        final_model_dir = Path("models/realtime/MP")
         final_model_dir.mkdir(parents=True, exist_ok=True)
-        final_model_path = final_model_dir / f"{args.game}_ppo_realtime_final.zip"
+        final_model_path = final_model_dir / "MP_ppo_realtime_final.zip"
         
         model.save(str(final_model_path))
         env.close()

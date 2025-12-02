@@ -26,13 +26,14 @@ class RealtimeGameEnv(gym.Env):
     
     metadata = {'render.modes': ['human']}
     
-    def __init__(self, game="ML", frame_width=84, frame_height=84, frame_stack=4):
+    def __init__(self, game="ML", frame_width=84, frame_height=84, frame_stack=4, frame_skip=4):
         super().__init__()
         
         self.game = game
         self.frame_width = frame_width
         self.frame_height = frame_height
         self.frame_stack = frame_stack
+        self.frame_skip = frame_skip
         
         # 설정 로드
         self.config = load_config(game=game)
@@ -153,37 +154,45 @@ class RealtimeGameEnv(gym.Env):
     
     def step(self, action):
         """행동 실행 및 보상 계산"""
-        # 1. 행동 실행
-        self._execute_action(action)
+        # 1. 행동 실행 (프레임 스킵 적용)
+        total_reward = 0.0
+        done = False
         
-        # 2. 약간의 대기 (게임이 반응할 시간)
-        time.sleep(0.1)
+        for _ in range(self.frame_skip):
+            self._execute_action(action)
+            
+            # 2. 대기 시간 대폭 단축 (0.1 -> 0.01)
+            time.sleep(0.01)
+            
+            # 3. 프레임 캡처 및 보상 계산
+            screenshot = self.sct.grab(self.monitor)
+            current_frame = np.array(screenshot)
+            current_frame = cv2.cvtColor(current_frame, cv2.COLOR_BGRA2BGR)
+            
+            # 🚨 안전장치 2: 위험 몬스터 감지 (스킵 중에도 체크)
+            self._check_danger_monster(current_frame)
+            
+            # 보상 누적
+            step_reward = self._calculate_reward(action, current_frame)
+            total_reward += step_reward
+            
+            # 프레임 버퍼 업데이트 (매 스텝마다)
+            processed = self._preprocess_frame(current_frame)
+            self.frame_buffer.append(processed)
+            self.last_frame = current_frame.copy()
+            
+            # 종료 조건 체크
+            self.step_count += 1
+            if self.step_count >= 1000:
+                done = True
+                break
         
-        # 3. 다음 프레임 캡처
-        screenshot = self.sct.grab(self.monitor)
-        current_frame = np.array(screenshot)
-        current_frame = cv2.cvtColor(current_frame, cv2.COLOR_BGRA2BGR)
-        
-        # 🚨 안전장치 2: 위험 몬스터 감지
-        self._check_danger_monster(current_frame)
-        
-        # 4. 보상 계산 (화면 변화 기반)
-        reward = self._calculate_reward(action, current_frame)
-        
-        # 5. 프레임 버퍼 업데이트
-        processed = self._preprocess_frame(current_frame)
-        self.frame_buffer.append(processed)
-        self.last_frame = current_frame.copy()
-        
-        # 6. 종료 조건 (일정 스텝 후)
-        self.step_count += 1
-        self.episode_reward += reward
-        done = self.step_count >= 1000  # 1000 스텝 = 1 에피소드
+        self.episode_reward += total_reward
         
         observation = self._get_observation()
         info = {'step': self.step_count, 'episode_reward': self.episode_reward}
         
-        return observation, reward, done, False, info
+        return observation, total_reward, done, False, info
     
     def _preprocess_frame(self, frame):
         """프레임 전처리"""
@@ -277,9 +286,10 @@ class RealtimeGameEnv(gym.Env):
             # 벽 충돌 감지 (이동/텔포 했는데 화면 변화 없음)
             if action in [1, 2, 3] and change_score < 0.03:
                 self.stuck_count += 1
-                reward -= 0.3  # 벽 충돌 페널티
-                if self.stuck_count > 3:
-                    reward -= 0.5  # 계속 벽에 박으면 더 큰 페널티
+                reward -= 0.8  # 벽 충돌 강한 페널티
+                if self.stuck_count > 2:
+                    reward -= 1.2  # 계속 벽에 박으면 매우 큰 페널티
+                print(f"🧱 벽 충돌 감지! (연속 {self.stuck_count}회)")
             else:
                 self.stuck_count = max(0, self.stuck_count - 1)  # 회복
             
@@ -345,11 +355,11 @@ class RealtimeGameEnv(gym.Env):
         # 경험치 바 영역 추출
         exp_roi = frame[y:y+h, x:x+w]
         
-        # 노란색 픽셀 카운트 (HSV 색상 공간)
-        hsv = cv2.cvtColor(exp_roi, cv2.COLOR_BGR2HSV)
+        # 최적화: ROI만 HSV 변환
+        hsv_roi = cv2.cvtColor(exp_roi, cv2.COLOR_BGR2HSV)
         lower_yellow = np.array([20, 100, 100])
         upper_yellow = np.array([30, 255, 255])
-        mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
+        mask = cv2.inRange(hsv_roi, lower_yellow, upper_yellow)
         yellow_pixels = np.sum(mask > 0)
         
         # 이전 프레임과 비교

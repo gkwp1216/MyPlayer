@@ -1,8 +1,8 @@
 """
-실시간 강화학습 학습 스크립트
-게임을 플레이하면서 실시간으로 학습
+ML 게임 전용 실시간 강화학습 학습 스크립트
+비숍 캐릭터로 게임을 플레이하면서 실시간으로 학습
 
-사용법: py tools/train_realtime_rl.py --timesteps 50000
+사용법: py tools/train_ml.py --timesteps 50000
 """
 import argparse
 from pathlib import Path
@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
-from src.rl_env_realtime import RealtimeGameEnv
+from src.rl_env_ml import MLRealtimeEnv
 import torch
 import keyboard
 
@@ -31,7 +31,7 @@ class RealtimeTrainingCallback(BaseCallback):
     def _on_step(self):
         """매 스텝마다 호출"""
         # ESC로 중지
-        if 
+        if keyboard.is_pressed('esc'):
             print("\n⏹️  ESC 감지 - 학습 중지")
             return False
         
@@ -61,8 +61,7 @@ class RealtimeTrainingCallback(BaseCallback):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="실시간 RL 학습")
-    parser.add_argument("--game", default="ML", help="게임 이름")
+    parser = argparse.ArgumentParser(description="ML 게임 실시간 RL 학습")
     parser.add_argument("--timesteps", type=int, default=50000, help="학습 타임스텝")
     parser.add_argument("--learning-rate", type=float, default=0.0003, help="학습률")
     parser.add_argument("--frame-width", type=int, default=84, help="프레임 너비")
@@ -73,11 +72,10 @@ def main():
     args = parser.parse_args()
     
     print("=" * 60)
-    print("🎮 실시간 강화학습")
     print("=" * 60)
-    print(f"게임: {args.game}")
-    print(f"타임스텝: {args.timesteps:,}")
-    print(f"학습률: {args.learning_rate}")
+    print("🎮 ML 게임 실시간 강화학습 (비숍)")
+    print("=" * 60)
+    print(f"타임스텝: {args.timesteps:,}"))
     print(f"프레임 크기: {args.frame_width}x{args.frame_height}")
     print(f"프레임 스킵: {args.frame_skip}")
     print("=" * 60)
@@ -106,15 +104,14 @@ def main():
         time.sleep(1)
     
     # 환경 생성
-    print("\n📊 환경 생성 중...")
-    env = RealtimeGameEnv(
-        game=args.game,
+    # ML 환경 생성
+    print("\n📊 ML 환경 생성 중...")
+    env = MLRealtimeEnv(
         frame_width=args.frame_width,
         frame_height=args.frame_height,
         frame_stack=args.frame_stack,
         frame_skip=args.frame_skip
     )
-    
     print(f"✅ 환경 생성 완료")
     print(f"   관측 공간: {env.observation_space.shape}")
     print(f"   행동 공간: {env.action_space.n}개")
@@ -153,12 +150,14 @@ def main():
     
     # 콜백 설정
     checkpoint_dir = Path(f"models/realtime/{args.game}/checkpoints")
+    # 콜백 설정
+    checkpoint_dir = Path("models/realtime/ML/checkpoints")
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     
     checkpoint_callback = CheckpointCallback(
         save_freq=5000,
         save_path=str(checkpoint_dir),
-        name_prefix=f"{args.game}_ppo_realtime"
+        name_prefix="ML_ppo_realtime"
     )
     
     training_callback = RealtimeTrainingCallback(verbose=1)
@@ -166,9 +165,7 @@ def main():
     # 학습 시작
     print("\n🚀 학습 시작!")
     print("📊 TensorBoard 모니터링:")
-    print(f"   tensorboard --logdir logs/realtime/{args.game}")
-    print("\n⏹️  ESC 키를 눌러 안전하게 중지")
-    print("=" * 60)
+    print("   tensorboard --logdir logs/realtime/ML")
     
     try:
         model.learn(
@@ -181,11 +178,11 @@ def main():
     except Exception as e:
         print(f"\n❌ 에러 발생: {e}")
     finally:
+    finally:
         # 최종 모델 저장
-        final_model_dir = Path(f"models/realtime/{args.game}")
+        final_model_dir = Path("models/realtime/ML")
         final_model_dir.mkdir(parents=True, exist_ok=True)
-        final_model_path = final_model_dir / f"{args.game}_ppo_realtime_final.zip"
-        
+        final_model_path = final_model_dir / "ML_ppo_realtime_final.zip"
         model.save(str(final_model_path))
         env.close()
         
